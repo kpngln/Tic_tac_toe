@@ -1,0 +1,196 @@
+body {
+    margin: 0;
+    font-family: "Segoe UI", Arial, sans-serif;
+    height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+
+    background: radial-gradient(circle at top, #141824, #0b0d12);
+    color: #e8e8e8;
+    overflow: hidden;
+}
+
+/* ================= 页面进入动画 ================= */
+.screen {
+    width: min(420px, 92vw);
+    padding: 26px;
+
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 18px;
+
+    backdrop-filter: blur(18px);
+    box-shadow: 0 20px 60px rgba(0,0,0,0.6);
+
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+
+    animation: popIn 0.6s ease;
+}
+
+@keyframes popIn {
+    from {
+        transform: translateY(20px) scale(0.96);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0) scale(1);
+        opacity: 1;
+    }
+}
+
+/* ================= 标题 ================= */
+h1 {
+    font-size: 22px;
+    margin-bottom: 18px;
+    font-weight: 600;
+}
+
+/* ================= 表单 ================= */
+label {
+    font-size: 13px;
+    color: #aaa;
+    margin-top: 12px;
+    width: 100%;
+}
+
+select {
+    width: 100%;
+    margin-top: 6px;
+
+    padding: 9px 10px;
+    border-radius: 10px;
+
+    border: 1px solid rgba(255,255,255,0.1);
+    background: rgba(0,0,0,0.35);
+    color: #fff;
+}
+
+/* ================= ⭐按钮（带波纹感）================= */
+button {
+    margin-top: 14px;
+    padding: 9px 12px;
+
+    border-radius: 10px;
+    border: none;
+
+    background: rgba(255,255,255,0.08);
+    color: #eee;
+
+    cursor: pointer;
+    transition: 0.2s;
+    font-size: 13px;
+
+    position: relative;
+    overflow: hidden;
+}
+
+button:hover {
+    background: rgba(255,255,255,0.16);
+    transform: translateY(-2px);
+}
+
+/* ================= 游戏界面 ================= */
+#game-screen {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+/* 状态文字 */
+#current-player,
+#game-result {
+    font-size: 14px;
+    color: #cfcfcf;
+    margin: 4px 0;
+}
+
+/* ================= ⭐棋盘（进入动画）================= */
+.board {
+    display: grid;
+
+    gap: clamp(6px, 1.5vw, 10px);
+
+    margin: 16px 0;
+
+    width: min(320px, 90vw);
+    height: min(320px, 90vw);
+
+    justify-content: center;
+    align-content: center;
+
+    animation: boardIn 0.5s ease;
+}
+
+@keyframes boardIn {
+    from {
+        transform: scale(0.9);
+        opacity: 0;
+    }
+    to {
+        transform: scale(1);
+        opacity: 1;
+    }
+}
+
+/* ================= ⭐棋格（落子动画）================= */
+.board-cell {
+    width: 100%;
+    height: 100%;
+    aspect-ratio: 1 / 1;
+
+    border-radius: 14px;
+
+    display: flex;
+    justify-content: center;
+    align-items: center;
+
+    font-size: clamp(18px, 4vw, 28px);
+    font-weight: 700;
+
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.08);
+
+    cursor: pointer;
+    transition: 0.15s ease;
+}
+
+.board-cell:hover {
+    background: rgba(255,255,255,0.12);
+    transform: scale(1.05);
+}
+
+/* ⭐落子动画 */
+.board-cell.placed {
+    animation: placePop 0.2s ease;
+}
+
+@keyframes placePop {
+    0% { transform: scale(0.2); opacity: 0; }
+    100% { transform: scale(1); opacity: 1; }
+}
+
+/* ================= ⭐胜利动画（核心）================= */
+.win-cell {
+    background: rgba(46, 213, 115, 0.25) !important;
+    border: 1px solid rgba(46, 213, 115, 0.8);
+    box-shadow: 0 0 16px rgba(46, 213, 115, 0.5);
+
+    animation: winPulse 1s infinite;
+}
+
+@keyframes winPulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.12); }
+    100% { transform: scale(1); }
+}
+
+/* ================= 游戏按钮 ================= */
+#game-screen button {
+    min-width: 110px;
+    margin: 6px 6px 0 6px;
+    font-size: 12px;
+    padding: 8px 10px;
+}

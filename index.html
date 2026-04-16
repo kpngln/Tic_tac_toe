@@ -1,0 +1,39 @@
+<div id="start-screen" class="screen">
+    <h1>井字棋游戏</h1>
+
+    <label>棋盘规格</label>
+    <select id="board-size">
+        <option value="3">3 × 3</option>
+        <option value="4">4 × 4</option>
+        <option value="5">5 × 5</option>
+    </select>
+
+    <label>对战模式</label>
+    <select id="game-mode">
+        <option value="pvp">玩家对战</option>
+        <option value="ai">人机对战</option>
+    </select>
+
+    <label>AI难度</label>
+    <select id="ai-level">
+        <option value="easy">简单</option>
+        <option value="medium">中等</option>
+        <option value="hard">困难</option>
+    </select>
+
+    <button id="start-btn">开始对战</button>
+</div>
+
+<div id="game-screen" class="screen" style="display:none;">
+    <div class="top-bar">
+        <div id="current-player">当前：X</div>
+        <div id="game-result"></div>
+    </div>
+
+    <div id="game-board" class="board"></div>
+
+    <div class="btn-group">
+        <button id="reset-btn">重新开始</button>
+        <button id="exit-btn">退出</button>
+    </div>
+</div>
