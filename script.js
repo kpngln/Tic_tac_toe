@@ -1,7 +1,7 @@
 let boardSize = 3;
 let board = [];
 let currentPlayer = 'X';
-let gameMode = 'player-vs-player';
+let gameMode = 'pvp';
 let aiDifficulty = 'hard';
 let gameOver = false;
 
@@ -78,7 +78,7 @@ function handleClick(e) {
     currentPlayer = currentPlayer === 'X' ? 'O' : 'X';
     updateStatus();
 
-    if (gameMode === 'player-vs-ai' && currentPlayer === 'O') {
+    if (gameMode === 'ai' && currentPlayer === 'O') {
         setTimeout(aiMove, 150);
     }
 }
@@ -243,7 +243,7 @@ function minimax(state, depth, isMax, alpha, beta, limit) {
     }
 }
 
-/* ================= 评估函数（论文重点） ================= */
+/* ================= 评估函数 ================= */
 
 function evaluate(state) {
     const lines = getLines(state);
