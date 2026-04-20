@@ -132,11 +132,17 @@ function aiMove() {
     let move;
 
     if (aiDifficulty === 'easy') {
+        console.time("简单AI耗时");
         move = randomMove();
+        console.timeEnd("简单AI耗时");
     } else if (aiDifficulty === 'medium') {
+        console.time("中等AI耗时");
         move = shallowMove(board, 2);
+        console.timeEnd("中等AI耗时");
     } else {
+        console.time("困难AI耗时");
         move = bestMove(board);
+        console.timeEnd("困难AI耗时");
     }
 
     board[move] = 'O';
