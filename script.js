@@ -4,6 +4,11 @@ let currentPlayer = 'X';
 let gameMode = 'pvp';
 let aiDifficulty = 'hard';
 let gameOver = false;
+let moveHistory = [];
+let timerInterval = null;
+let gameTime = 0;
+let lastMoveTime = 0;
+const UNDO_TIME_LIMIT = 10000; // 10秒悔棋时间限制
 
 const startScreen = document.getElementById('start-screen');
 const gameScreen = document.getElementById('game-screen');
@@ -13,10 +18,15 @@ const currentPlayerElement = document.getElementById('current-player');
 const gameResultElement = document.getElementById('game-result');
 const resetBtn = document.getElementById('reset-btn');
 const exitBtn = document.getElementById('exit-btn');
+const undoBtn = document.getElementById('undo-btn');
+const undoTimerElement = document.getElementById('undo-timer');
+const timerElement = document.getElementById('timer');
+const moveHistoryElement = document.getElementById('move-history');
 
 startBtn.addEventListener('click', startGame);
 resetBtn.addEventListener('click', resetGame);
 exitBtn.addEventListener('click', exitGame);
+undoBtn.addEventListener('click', undoMove);
 
 /* ================= 启动 ================= */
 
@@ -24,16 +34,26 @@ function startGame() {
     boardSize = parseInt(document.getElementById('board-size').value);
     gameMode = document.getElementById('game-mode').value;
     aiDifficulty = document.getElementById('ai-level').value;
+    currentPlayer = document.getElementById('first-player').value;
 
     board = [];
     gameOver = false;
-    currentPlayer = 'X';
+    moveHistory = [];
+    gameTime = 0;
+    lastMoveTime = 0;
+    gameResultElement.innerText = '';
 
     startScreen.style.display = 'none';
     gameScreen.style.display = 'flex';
 
     createBoard();
     updateStatus();
+    updateHistory();
+    startTimer();
+
+    if (gameMode === 'ai' && currentPlayer === 'O') {
+        setTimeout(aiMove, 150);
+    }
 }
 
 /* ================= 棋盘 ================= */
@@ -67,6 +87,13 @@ function handleClick(e) {
     e.target.innerText = currentPlayer;
     e.target.classList.add("placed");
 
+    // 记录移动
+    const row = Math.floor(i / boardSize) + 1;
+    const col = (i % boardSize) + 1;
+    moveHistory.push({ player: currentPlayer, position: [row, col], index: i });
+    lastMoveTime = Date.now();
+    updateHistory();
+
     setTimeout(() => {
         e.target.classList.remove("placed");
     }, 200);
@@ -91,22 +118,136 @@ function updateStatus() {
 }
 
 function resetGame() {
-    gameOver = false;
-    currentPlayer = 'X';
-    gameResultElement.innerText = '';
-    createBoard();
-    updateStatus();
+    if (timerInterval) {
+        clearInterval(timerInterval);
+        timerInterval = null;
+    }
+    undoTimerElement.innerText = '';
+    gameScreen.style.display = 'none';
+    startScreen.style.display = 'flex';
 }
 
 function exitGame() {
+    if (timerInterval) {
+        clearInterval(timerInterval);
+        timerInterval = null;
+    }
+    undoTimerElement.innerText = '';
     gameScreen.style.display = 'none';
     startScreen.style.display = 'flex';
+}
+
+/* ================= 计时器 ================= */
+
+function startTimer() {
+    if (timerInterval) {
+        clearInterval(timerInterval);
+    }
+    gameTime = 0;
+    timerElement.innerText = `时间：0s`;
+    timerInterval = setInterval(() => {
+        gameTime++;
+        timerElement.innerText = `时间：${gameTime}s`;
+        updateUndoTimer();
+    }, 1000);
+}
+
+function updateUndoTimer() {
+    if (moveHistory.length === 0) {
+        undoTimerElement.innerText = '';
+        return;
+    }
+    const elapsed = Date.now() - lastMoveTime;
+    const remaining = Math.max(0, UNDO_TIME_LIMIT - elapsed);
+    const seconds = Math.ceil(remaining / 1000);
+    undoTimerElement.innerText = `${seconds}s`;
+    if (seconds <= 3) {
+        undoTimerElement.classList.add('warning');
+    } else {
+        undoTimerElement.classList.remove('warning');
+    }
+}
+
+/* ================= 历史记录 ================= */
+
+function updateHistory() {
+    moveHistoryElement.innerHTML = '';
+    moveHistory.forEach((move, index) => {
+        const li = document.createElement('li');
+        li.innerText = `第${index + 1}步: ${move.player === 'X' ? '黑棋' : '白棋'} 在 (${move.position[0]}, ${move.position[1]})`;
+        moveHistoryElement.appendChild(li);
+    });
+}
+
+/* ================= 悔棋 ================= */
+
+function undoMove() {
+    if (gameOver) return;
+    
+    // 检查是否在悔棋时间限制内
+    if (Date.now() - lastMoveTime > UNDO_TIME_LIMIT) {
+        alert('悔棋时间已过（超过10秒）');
+        return;
+    }
+    
+    // 检查是否有可悔的棋
+    if (moveHistory.length === 0) {
+        alert('没有可悔的棋');
+        return;
+    }
+    
+    // 人机对战时，只能悔玩家自己的棋子
+    if (gameMode === 'ai') {
+        // 找到最后一个玩家的棋子
+        let lastPlayerMoveIndex = -1;
+        for (let i = moveHistory.length - 1; i >= 0; i--) {
+            if (moveHistory[i].player === 'X') {
+                lastPlayerMoveIndex = i;
+                break;
+            }
+        }
+        
+        if (lastPlayerMoveIndex === -1) {
+            alert('没有可悔的玩家棋子');
+            return;
+        }
+        
+        // 移除从最后一个玩家棋子开始的所有移动
+        while (moveHistory.length > lastPlayerMoveIndex) {
+            const move = moveHistory.pop();
+            board[move.index] = null;
+            boardElement.children[move.index].innerText = '';
+        }
+        
+        // 重置游戏状态
+        gameOver = false;
+        currentPlayer = 'X';
+        updateStatus();
+        updateHistory();
+    } else {
+        // 玩家对战时，可以悔最后一步
+        const move = moveHistory.pop();
+        board[move.index] = null;
+        boardElement.children[move.index].innerText = '';
+        
+        // 重置游戏状态
+        gameOver = false;
+        currentPlayer = move.player; // 回到上一个玩家的回合
+        updateStatus();
+        updateHistory();
+    }
 }
 
 /* ================= 胜利 ================= */
 
 function endGame(result) {
     gameOver = true;
+    
+    if (timerInterval) {
+        clearInterval(timerInterval);
+        timerInterval = null;
+    }
+    undoTimerElement.innerText = '';
 
     if (result && result.winner) {
         gameResultElement.innerText =
@@ -147,6 +288,13 @@ function aiMove() {
 
     board[move] = 'O';
     boardElement.children[move].innerText = 'O';
+
+    // 记录移动
+    const row = Math.floor(move / boardSize) + 1;
+    const col = (move % boardSize) + 1;
+    moveHistory.push({ player: 'O', position: [row, col], index: move });
+    lastMoveTime = Date.now();
+    updateHistory();
 
     const result = checkWinner(board);
     if (result) return endGame(result);
