@@ -8,7 +8,9 @@ let moveHistory = [];
 let timerInterval = null;
 let gameTime = 0;
 let lastMoveTime = 0;
-const UNDO_TIME_LIMIT = 10000; // 10秒悔棋时间限制
+let toastTimeout = null;
+let hasUndone = false;
+const UNDO_TIME_LIMIT = 10000;
 
 const startScreen = document.getElementById('start-screen');
 const gameScreen = document.getElementById('game-screen');
@@ -22,11 +24,34 @@ const undoBtn = document.getElementById('undo-btn');
 const undoTimerElement = document.getElementById('undo-timer');
 const timerElement = document.getElementById('timer');
 const moveHistoryElement = document.getElementById('move-history');
+const toastElement = document.getElementById('toast');
+const toastMessageElement = document.getElementById('toast-message');
+const toastIconElement = document.getElementById('toast-icon');
+const toastCloseElement = document.getElementById('toast-close');
 
 startBtn.addEventListener('click', startGame);
 resetBtn.addEventListener('click', resetGame);
 exitBtn.addEventListener('click', exitGame);
 undoBtn.addEventListener('click', undoMove);
+toastCloseElement.addEventListener('click', hideToast);
+
+function showToast(message, icon = '💭', duration = 3000) {
+    if (toastTimeout) {
+        clearTimeout(toastTimeout);
+    }
+    toastIconElement.innerText = icon;
+    toastMessageElement.innerText = message;
+    toastElement.classList.add('show');
+    toastTimeout = setTimeout(hideToast, duration);
+}
+
+function hideToast() {
+    if (toastTimeout) {
+        clearTimeout(toastTimeout);
+        toastTimeout = null;
+    }
+    toastElement.classList.remove('show');
+}
 
 /* ================= 启动 ================= */
 
@@ -41,6 +66,7 @@ function startGame() {
     moveHistory = [];
     gameTime = 0;
     lastMoveTime = 0;
+    hasUndone = false;
     gameResultElement.innerText = '';
 
     startScreen.style.display = 'none';
@@ -87,11 +113,11 @@ function handleClick(e) {
     e.target.innerText = currentPlayer;
     e.target.classList.add("placed");
 
-    // 记录移动
     const row = Math.floor(i / boardSize) + 1;
     const col = (i % boardSize) + 1;
     moveHistory.push({ player: currentPlayer, position: [row, col], index: i });
     lastMoveTime = Date.now();
+    hasUndone = false;
     updateHistory();
 
     setTimeout(() => {
@@ -123,8 +149,28 @@ function resetGame() {
         timerInterval = null;
     }
     undoTimerElement.innerText = '';
-    gameScreen.style.display = 'none';
-    startScreen.style.display = 'flex';
+    gameResultElement.innerText = '';
+    
+    Array.from(boardElement.children).forEach(cell => {
+        cell.classList.remove('win-cell');
+    });
+    
+    board = [];
+    gameOver = false;
+    moveHistory = [];
+    gameTime = 0;
+    lastMoveTime = 0;
+    hasUndone = false;
+    currentPlayer = document.getElementById('first-player').value;
+    
+    createBoard();
+    updateStatus();
+    updateHistory();
+    startTimer();
+    
+    if (gameMode === 'ai' && currentPlayer === 'O') {
+        setTimeout(aiMove, 150);
+    }
 }
 
 function exitGame() {
@@ -184,55 +230,58 @@ function updateHistory() {
 function undoMove() {
     if (gameOver) return;
     
-    // 检查是否在悔棋时间限制内
+    if (hasUndone) {
+        showToast('只能悔一步哦！！', '⛔');
+        return;
+    }
+    
     if (Date.now() - lastMoveTime > UNDO_TIME_LIMIT) {
-        alert('悔棋时间已过（超过10秒）');
+        showToast('悔棋时间已过（超过10秒）', '⏰');
         return;
     }
     
-    // 检查是否有可悔的棋
     if (moveHistory.length === 0) {
-        alert('没有可悔的棋');
+        showToast('没有可悔的棋', '🔍');
         return;
     }
     
-    // 人机对战时，只能悔玩家自己的棋子
     if (gameMode === 'ai') {
-        // 找到最后一个玩家的棋子
-        let lastPlayerMoveIndex = -1;
-        for (let i = moveHistory.length - 1; i >= 0; i--) {
-            if (moveHistory[i].player === 'X') {
-                lastPlayerMoveIndex = i;
-                break;
-            }
-        }
-        
-        if (lastPlayerMoveIndex === -1) {
-            alert('没有可悔的玩家棋子');
-            return;
-        }
-        
-        // 移除从最后一个玩家棋子开始的所有移动
-        while (moveHistory.length > lastPlayerMoveIndex) {
+        const lastMove = moveHistory[moveHistory.length - 1];
+        if (lastMove.player === 'X') {
             const move = moveHistory.pop();
             board[move.index] = null;
             boardElement.children[move.index].innerText = '';
+            currentPlayer = 'X';
+        } else {
+            if (moveHistory.length < 2) {
+                showToast('没有可悔的玩家棋子', '🔍');
+                return;
+            }
+            const aiMove = moveHistory.pop();
+            board[aiMove.index] = null;
+            boardElement.children[aiMove.index].innerText = '';
+            
+            const playerMove = moveHistory.pop();
+            board[playerMove.index] = null;
+            boardElement.children[playerMove.index].innerText = '';
+            currentPlayer = 'X';
         }
-        
-        // 重置游戏状态
         gameOver = false;
-        currentPlayer = 'X';
+        Array.from(boardElement.children).forEach(cell => cell.classList.remove('win-cell'));
+        gameResultElement.innerText = '';
+        hasUndone = true;
         updateStatus();
         updateHistory();
     } else {
-        // 玩家对战时，可以悔最后一步
         const move = moveHistory.pop();
         board[move.index] = null;
         boardElement.children[move.index].innerText = '';
         
-        // 重置游戏状态
         gameOver = false;
-        currentPlayer = move.player; // 回到上一个玩家的回合
+        Array.from(boardElement.children).forEach(cell => cell.classList.remove('win-cell'));
+        gameResultElement.innerText = '';
+        currentPlayer = move.player;
+        hasUndone = true;
         updateStatus();
         updateHistory();
     }
@@ -289,11 +338,11 @@ function aiMove() {
     board[move] = 'O';
     boardElement.children[move].innerText = 'O';
 
-    // 记录移动
     const row = Math.floor(move / boardSize) + 1;
     const col = (move % boardSize) + 1;
     moveHistory.push({ player: 'O', position: [row, col], index: move });
     lastMoveTime = Date.now();
+    hasUndone = false;
     updateHistory();
 
     const result = checkWinner(board);
@@ -355,25 +404,19 @@ function bestMove(state) {
 /* ================= Minimax ================= */
 
 function minimax(state, depth, isMax, alpha, beta, limit) {
-
     const result = checkWinner(state);
-
     if (result?.winner === 'O') return 10000 - depth;
     if (result?.winner === 'X') return depth - 10000;
-
     if (state.every(v => v !== null)) return 0;
     if (depth >= limit) return evaluate(state);
 
     if (isMax) {
         let best = -Infinity;
-
         for (let i = 0; i < state.length; i++) {
             if (!state[i]) {
                 state[i] = 'O';
-                best = Math.max(best,
-                    minimax(state, depth + 1, false, alpha, beta, limit));
+                best = Math.max(best, minimax(state, depth + 1, false, alpha, beta, limit));
                 state[i] = null;
-
                 alpha = Math.max(alpha, best);
                 if (beta <= alpha) break;
             }
@@ -381,14 +424,11 @@ function minimax(state, depth, isMax, alpha, beta, limit) {
         return best;
     } else {
         let best = Infinity;
-
         for (let i = 0; i < state.length; i++) {
             if (!state[i]) {
                 state[i] = 'X';
-                best = Math.min(best,
-                    minimax(state, depth + 1, true, alpha, beta, limit));
+                best = Math.min(best, minimax(state, depth + 1, true, alpha, beta, limit));
                 state[i] = null;
-
                 beta = Math.min(beta, best);
                 if (beta <= alpha) break;
             }
@@ -402,17 +442,13 @@ function minimax(state, depth, isMax, alpha, beta, limit) {
 function evaluate(state) {
     const lines = getLines(state);
     let score = 0;
-
     for (let l of lines) {
         const o = l.filter(v => v === 'O').length;
         const x = l.filter(v => v === 'X').length;
-
         if (o && x) continue;
-
         if (o) score += Math.pow(10, o);
         if (x) score -= Math.pow(12, x);
     }
-
     return score;
 }
 
@@ -421,8 +457,7 @@ function evaluate(state) {
 function checkWinner(state) {
     const n = boardSize;
 
-    const same = (arr) =>
-        arr[0] && arr.every(v => v === arr[0]);
+    const same = (arr) => arr[0] && arr.every(v => v === arr[0]);
 
     for (let i = 0; i < n; i++) {
         const row = state.slice(i * n, i * n + n);
@@ -436,15 +471,12 @@ function checkWinner(state) {
     }
 
     const d1 = [], d2 = [];
-
     for (let i = 0; i < n; i++) {
         d1.push(state[i * n + i]);
         d2.push(state[i * n + (n - i - 1)]);
     }
-
     if (same(d1)) return { winner: d1[0], line: diag1Line() };
     if (same(d2)) return { winner: d2[0], line: diag2Line() };
-
     return null;
 }
 
@@ -463,8 +495,7 @@ function diag1Line() {
 }
 
 function diag2Line() {
-    return Array.from({ length: boardSize }, (_, i) =>
-        i * boardSize + (boardSize - i - 1));
+    return Array.from({ length: boardSize }, (_, i) => i * boardSize + (boardSize - i - 1));
 }
 
 /* ================= 所有线 ================= */
@@ -472,25 +503,19 @@ function diag2Line() {
 function getLines(state) {
     const n = boardSize;
     const lines = [];
-
     for (let i = 0; i < n; i++) {
         lines.push(state.slice(i * n, i * n + n));
-
         const col = [];
         for (let j = 0; j < n; j++) {
             col.push(state[j * n + i]);
         }
         lines.push(col);
     }
-
     const d1 = [], d2 = [];
-
     for (let i = 0; i < n; i++) {
         d1.push(state[i * n + i]);
         d2.push(state[i * n + (n - i - 1)]);
     }
-
     lines.push(d1, d2);
-
     return lines;
 }
