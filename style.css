@@ -101,10 +101,80 @@ button:hover {
 
 /* 状态文字 */
 #current-player,
-#game-result {
+#game-result,
+#timer {
     font-size: 14px;
     color: #cfcfcf;
     margin: 4px 0;
+}
+
+/* 顶部栏 */
+.top-bar {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+}
+
+/* 游戏信息 */
+.game-info {
+    width: 100%;
+    height: 150px;
+    margin: 10px 0;
+    flex-shrink: 0;
+}
+
+/* 历史记录 */
+.history-section {
+    background: rgba(255,255,255,0.05);
+    border-radius: 10px;
+    padding: 10px;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    box-sizing: border-box;
+}
+
+.history-section h3 {
+    font-size: 14px;
+    margin: 0 0 8px 0;
+    color: #aaa;
+    flex-shrink: 0;
+}
+
+#move-history {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    flex: 1;
+    overflow-y: auto;
+    min-height: 0;
+}
+
+#move-history li {
+    font-size: 12px;
+    color: #cfcfcf;
+    margin: 2px 0;
+    padding: 2px 0;
+}
+
+/* 滚动条样式 */
+#move-history::-webkit-scrollbar {
+    width: 4px;
+}
+
+#move-history::-webkit-scrollbar-track {
+    background: rgba(255,255,255,0.1);
+    border-radius: 2px;
+}
+
+#move-history::-webkit-scrollbar-thumb {
+    background: rgba(255,255,255,0.3);
+    border-radius: 2px;
+}
+
+#move-history::-webkit-scrollbar-thumb:hover {
+    background: rgba(255,255,255,0.5);
 }
 
 /* ================= 棋盘 ================= */
@@ -193,4 +263,16 @@ button:hover {
     margin: 6px 6px 0 6px;
     font-size: 12px;
     padding: 8px 10px;
+}
+
+/* 悔棋倒计时 */
+#undo-timer {
+    font-size: 12px;
+    color: #aaa;
+    margin-left: 4px;
+    vertical-align: middle;
+}
+
+#undo-timer.warning {
+    color: #ff6b6b;
 }
