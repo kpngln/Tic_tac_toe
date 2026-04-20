@@ -33,6 +33,12 @@
         <option value="hard">困难</option>
     </select>
 
+    <label>先手选择</label>
+    <select id="first-player">
+        <option value="X">黑棋(X)</option>
+        <option value="O">白棋(O)</option>
+    </select>
+
     <button id="start-btn">开始对战</button>
 </div>
 
@@ -41,11 +47,21 @@
     <div class="top-bar">
         <div id="current-player">当前：X</div>
         <div id="game-result"></div>
+        <div id="timer">时间：0s</div>
     </div>
 
     <div id="game-board" class="board"></div>
 
+    <div class="game-info">
+        <div class="history-section">
+            <h3>历史记录</h3>
+            <ul id="move-history"></ul>
+        </div>
+    </div>
+
     <div class="btn-group">
+        <button id="undo-btn">悔棋</button>
+        <span id="undo-timer">10s</span>
         <button id="reset-btn">重新开始</button>
         <button id="exit-btn">退出</button>
     </div>
