@@ -10,6 +10,7 @@ let gameTime = 0;
 let lastMoveTime = 0;
 let toastTimeout = null;
 let hasUndone = false;
+let lastMoveCanUndo = true;
 const UNDO_TIME_LIMIT = 10000;
 
 const startScreen = document.getElementById('start-screen');
@@ -67,6 +68,7 @@ function startGame() {
     gameTime = 0;
     lastMoveTime = 0;
     hasUndone = false;
+    lastMoveCanUndo = true;
     gameResultElement.innerText = '';
 
     startScreen.style.display = 'none';
@@ -115,9 +117,22 @@ function handleClick(e) {
 
     const row = Math.floor(i / boardSize) + 1;
     const col = (i % boardSize) + 1;
-    moveHistory.push({ player: currentPlayer, position: [row, col], index: i });
+    
+    if (hasUndone) {
+        const lastRecord = moveHistory[moveHistory.length - 1];
+        if (lastRecord.type === 'undo') {
+            lastRecord.newPlayer = currentPlayer;
+            lastRecord.newPosition = [row, col];
+            lastRecord.index = i;
+            lastMoveCanUndo = false;
+        }
+        hasUndone = false;
+    } else {
+        moveHistory.push({ player: currentPlayer, position: [row, col], index: i });
+        lastMoveCanUndo = true;
+    }
+    
     lastMoveTime = Date.now();
-    hasUndone = false;
     updateHistory();
 
     setTimeout(() => {
@@ -161,6 +176,7 @@ function resetGame() {
     gameTime = 0;
     lastMoveTime = 0;
     hasUndone = false;
+    lastMoveCanUndo = true;
     currentPlayer = document.getElementById('first-player').value;
     
     createBoard();
@@ -218,9 +234,17 @@ function updateUndoTimer() {
 
 function updateHistory() {
     moveHistoryElement.innerHTML = '';
-    moveHistory.forEach((move, index) => {
+    let displayStep = 0;
+    moveHistory.forEach((record, index) => {
         const li = document.createElement('li');
-        li.innerText = `第${index + 1}步: ${move.player === 'X' ? '黑棋' : '白棋'} 在 (${move.position[0]}, ${move.position[1]})`;
+        
+        if (record.type === 'undo') {
+            displayStep++;
+            li.innerHTML = `<span class="undo-record">第${displayStep}步：${record.undonePlayer === 'X' ? '黑棋' : '白棋'}(${record.undonePosition[0]},${record.undonePosition[1]}) —— 悔棋 —— ${record.newPlayer === 'X' ? '黑棋' : '白棋'}(${record.newPosition[0]},${record.newPosition[1]})</span>`;
+        } else {
+            displayStep++;
+            li.innerText = `第${displayStep}步: ${record.player === 'X' ? '黑棋' : '白棋'} 在 (${record.position[0]}, ${record.position[1]})`;
+        }
         moveHistoryElement.appendChild(li);
     });
 }
@@ -229,6 +253,11 @@ function updateHistory() {
 
 function undoMove() {
     if (gameOver) return;
+    
+    if (!lastMoveCanUndo) {
+        showToast('悔棋后不能再悔了！', '⛔');
+        return;
+    }
     
     if (hasUndone) {
         showToast('只能悔一步哦！！', '⛔');
@@ -246,41 +275,82 @@ function undoMove() {
     }
     
     if (gameMode === 'ai') {
-        const lastMove = moveHistory[moveHistory.length - 1];
-        if (lastMove.player === 'X') {
-            const move = moveHistory.pop();
-            board[move.index] = null;
-            boardElement.children[move.index].innerText = '';
+        const lastRecord = moveHistory[moveHistory.length - 1];
+        if (lastRecord.type === 'undo') {
+            showToast('悔棋后不能再悔了！', '⛔');
+            return;
+        }
+        if (lastRecord.player === 'X') {
+            const undoneMove = moveHistory.pop();
+            board[undoneMove.index] = null;
+            boardElement.children[undoneMove.index].innerText = '';
+            
+            moveHistory.push({
+                type: 'undo',
+                undonePlayer: undoneMove.player,
+                undonePosition: undoneMove.position,
+                newPlayer: undoneMove.player,
+                newPosition: undoneMove.position
+            });
+            
+            boardElement.childNodes.forEach(cell => cell.classList.remove('win-cell'));
+            gameResultElement.innerText = '';
+            hasUndone = true;
             currentPlayer = 'X';
+            updateStatus();
+            updateHistory();
         } else {
             if (moveHistory.length < 2) {
                 showToast('没有可悔的玩家棋子', '🔍');
                 return;
             }
             const aiMove = moveHistory.pop();
+            const playerMove = moveHistory.pop();
+            
             board[aiMove.index] = null;
             boardElement.children[aiMove.index].innerText = '';
-            
-            const playerMove = moveHistory.pop();
             board[playerMove.index] = null;
             boardElement.children[playerMove.index].innerText = '';
+            
+            moveHistory.push({
+                type: 'undo',
+                undonePlayer: playerMove.player,
+                undonePosition: playerMove.position,
+                newPlayer: playerMove.player,
+                newPosition: playerMove.position
+            });
+            
+            boardElement.childNodes.forEach(cell => cell.classList.remove('win-cell'));
+            gameResultElement.innerText = '';
+            hasUndone = true;
             currentPlayer = 'X';
+            updateStatus();
+            updateHistory();
         }
-        gameOver = false;
-        Array.from(boardElement.children).forEach(cell => cell.classList.remove('win-cell'));
-        gameResultElement.innerText = '';
-        hasUndone = true;
-        updateStatus();
-        updateHistory();
     } else {
-        const move = moveHistory.pop();
-        board[move.index] = null;
-        boardElement.children[move.index].innerText = '';
+        const lastRecord = moveHistory[moveHistory.length - 1];
+        if (lastRecord.type === 'undo') {
+            showToast('悔棋后不能再悔了！', '⛔');
+            return;
+        }
         
-        gameOver = false;
-        Array.from(boardElement.children).forEach(cell => cell.classList.remove('win-cell'));
+        const undoneMove = moveHistory.pop();
+        
+        board[undoneMove.index] = null;
+        boardElement.children[undoneMove.index].innerText = '';
+        
+        moveHistory.push({
+            type: 'undo',
+            undonePlayer: undoneMove.player,
+            undonePosition: undoneMove.position,
+            newPlayer: undoneMove.player,
+            newPosition: undoneMove.position
+        });
+        
+        boardElement.childNodes.forEach(cell => cell.classList.remove('win-cell'));
         gameResultElement.innerText = '';
-        currentPlayer = move.player;
+        
+        currentPlayer = undoneMove.player;
         hasUndone = true;
         updateStatus();
         updateHistory();
@@ -343,6 +413,7 @@ function aiMove() {
     moveHistory.push({ player: 'O', position: [row, col], index: move });
     lastMoveTime = Date.now();
     hasUndone = false;
+    lastMoveCanUndo = true;
     updateHistory();
 
     const result = checkWinner(board);
