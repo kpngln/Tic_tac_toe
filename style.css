@@ -414,3 +414,8 @@ button:hover {
     transform: scale(1.15) rotate(90deg);
     box-shadow: 0 4px 15px rgba(0,0,0,0.2);
 }
+
+.undo-record {
+    color: #e74c3c;
+    font-weight: bold;
+}
